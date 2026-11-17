@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: financedb
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app-local-only
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d financedb"]
+      interval: 5s
+      timeout: 3s
+      retries: 25
+  api:
+    build: ./backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/financedb
+      SPRING_DATASOURCE_USERNAME: app
+      SPRING_DATASOURCE_PASSWORD: app-local-only
+      APP_JWT_SECRET: ${APP_JWT_SECRET:-local-development-secret-change-for-production-256bit}
+    ports:
+      - "127.0.0.1:8085:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+  web:
+    build: ./frontend
+    ports:
+      - "127.0.0.1:5175:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+volumes:
+  pgdata:
